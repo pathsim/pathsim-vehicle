@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/pathsim/pathsim-vehicle/main/docs/source/logos/pathsim_vehicle_logo.png" width="300" alt="PathSim-Vehicle Logo" />
+  <img src="docs/source/logos/pathsim_vehicle_logo.png" width="300" alt="PathSim-Vehicle Logo" />
 </p>
 
 ------------
