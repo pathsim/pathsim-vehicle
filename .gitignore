@@ -205,3 +205,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Claude Code
+.claude
+
+# Auto-generated version file
+*_version.py
+
+# Sphinx documentation build
+docs/build/
