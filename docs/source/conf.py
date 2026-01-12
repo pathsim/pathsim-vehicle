@@ -45,7 +45,7 @@ html_theme = 'furo'
 html_static_path = ['_static', 'logos']
 html_css_files = ['custom.css']
 html_logo = 'logos/pathsim_vehicle_logo.png'
-html_favicon = "logos/pathsim_simplistic_logo.png"
+html_favicon = "logos/pathsim_icon.png"
 html_title = "PathSim-Vehicle Documentation"
 
 html_theme_options = {
