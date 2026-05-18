@@ -52,9 +52,9 @@ class DynamicBicycleParameters(BicycleParameters):
     I_z : float
         Yaw moment of inertia [kg·m²].
     C_af : float
-        Front tire cornering stiffness [N/rad].
+        Front axle cornering stiffness (both tires combined) [N/rad].
     C_ar : float
-        Rear tire cornering stiffness [N/rad].
+        Rear axle cornering stiffness (both tires combined) [N/rad].
     """
 
     m: float = 0.0
@@ -69,13 +69,13 @@ def hyundai_azera() -> DynamicBicycleParameters:
     Wheelbase: 2.843 m, l_f = 1.105 m, l_r = 1.738 m.
     Mass and inertia values are representative estimates for a
     mid-size sedan (~1600 kg). Cornering stiffness values are
-    typical for passenger car tires (~80,000 N/rad).
+    typical for a passenger car axle (~80,000 N/rad total, ~40,000 per tire).
     """
     return DynamicBicycleParameters(
         l_f=1.105,
         l_r=1.738,
         m=1600.0,
         I_z=2250.0,
-        C_af=80000.0,
-        C_ar=80000.0,
+        C_af=126000.0,  # proportional to rear load fraction l_r/(l_f+l_r)
+        C_ar=80000.0,   # proportional to front load fraction l_f/(l_f+l_r)
     )

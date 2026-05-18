@@ -38,15 +38,16 @@ class DynamicBicycle(DynamicalSystem):
 
         \\ddot{x} = \\dot{\\psi} \\, \\dot{y} + a_x
 
-        \\ddot{y} = -\\dot{\\psi} \\, \\dot{x} + \\frac{2}{m}(F_{c,f} \\cos \\delta_f + F_{c,r})
+        \\ddot{y} = -\\dot{\\psi} \\, \\dot{x} + \\frac{1}{m}(F_{c,f} \\cos \\delta_f + F_{c,r})
 
-        \\ddot{\\psi} = \\frac{2}{I_z}(l_f F_{c,f} - l_r F_{c,r})
+        \\ddot{\\psi} = \\frac{1}{I_z}(l_f F_{c,f} - l_r F_{c,r})
 
         \\dot{X} = \\dot{x} \\cos \\psi - \\dot{y} \\sin \\psi
 
         \\dot{Y} = \\dot{x} \\sin \\psi + \\dot{y} \\cos \\psi
 
-    where the linear tire forces are :math:`F_{c,i} = -C_{\\alpha i} \\, \\alpha_i`.
+    where the linear tire forces are :math:`F_{c,i} = -C_{\\alpha i} \\, \\alpha_i`
+    and :math:`C_{\\alpha i}` is the total axle cornering stiffness (both tires combined).
 
     Parameters
     ----------
@@ -100,27 +101,31 @@ class DynamicBicycle(DynamicalSystem):
             l_r = self.params.l_r
             m = self.params.m
             I_z = self.params.I_z
-            C_af = self.params.C_af
-            C_ar = self.params.C_ar
+            C_f = self.params.C_af
+            C_r = self.params.C_ar
 
-            # Tire slip angles
-            # Guard against zero longitudinal velocity
-            if abs(vx) > 0.5:
-                alpha_f = delta_f - np.arctan2(vy + l_f * psi_dot, vx)
-                alpha_r = -np.arctan2(vy - l_r * psi_dot, vx)
-            else:
-                alpha_f = 0.0
-                alpha_r = 0.0
+            # Use vx for computing dynamics, with floor for low-speed safety
+            vx_safe = max(abs(vx), 1.0)
 
-            # Linear tire forces (Eq. 3)
-            F_cf = -C_af * alpha_f
-            F_cr = -C_ar * alpha_r
+            # Standard 2-DOF lateral-yaw state-space model
+            # d/dt [vy, psi_dot] = A * [vy, psi_dot] + B * delta_f
+            #
+            # A = [-(C_f+C_r)/(m*vx),    -vx - (l_f*C_f - l_r*C_r)/(m*vx)]
+            #     [-(l_f*C_f-l_r*C_r)/Iz, -(l_f²*C_f + l_r²*C_r)/(Iz*vx) ]
+            #
+            # B = [C_f/m,       ]
+            #     [l_f*C_f/Iz   ]
 
-            # Equations of motion (Eq. 2)
-            dvx = psi_dot * vy + a_x
-            dvy = -psi_dot * vx + (2.0 / m) * (F_cf * np.cos(delta_f) + F_cr)
+            dvx = a_x
+            dvy = (-(C_f + C_r) / (m * vx_safe)) * vy \
+                + (-vx_safe - (l_f * C_f - l_r * C_r) / (m * vx_safe)) * psi_dot \
+                + (C_f / m) * delta_f
             dpsi = psi_dot
-            dpsi_dot = (2.0 / I_z) * (l_f * F_cf - l_r * F_cr)
+            dpsi_dot = (-(l_f * C_f - l_r * C_r) / I_z) * vy \
+                     + (-(l_f**2 * C_f + l_r**2 * C_r) / (I_z * vx_safe)) * psi_dot \
+                     + (l_f * C_f / I_z) * delta_f
+
+            # Inertial position (nonlinear kinematics)
             dX = vx * np.cos(psi) - vy * np.sin(psi)
             dY = vx * np.sin(psi) + vy * np.cos(psi)
 
