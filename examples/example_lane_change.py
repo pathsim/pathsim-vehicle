@@ -33,20 +33,22 @@ v0 = 15.0  # Highway speed [m/s] (~54 km/h)
 
 # STEERING INPUT ========================================================================
 
-# Double lane change: sinusoidal steering profile
+# Double lane change: two-cycle sinusoidal steering profile
 delta_max = np.radians(5.0)   # Peak steering angle [rad]
 t_start = 1.0                 # Maneuver start time [s]
-t_duration = 3.0              # Maneuver duration [s]
+t_duration = 4.0              # Maneuver duration [s] (2 cycles × 2s each)
 t_end = t_start + t_duration  # Maneuver end time [s]
 
 def steering_input(t):
     """Double lane change steering profile.
 
-    A full sine wave that steers right then left, returning to straight.
+    Two full sine periods: the first cycle moves the vehicle to the
+    adjacent lane, the second cycle returns it to the original lane.
     """
     if t < t_start or t > t_end:
         return 0.0
-    phase = 2.0 * np.pi * (t - t_start) / t_duration
+    # Two full cycles over t_duration
+    phase = 2.0 * (2.0 * np.pi) * (t - t_start) / t_duration
     return delta_max * np.sin(phase)
 
 
@@ -98,7 +100,7 @@ Sim_dyn = Simulation(blocks_dyn, connections_dyn, Solver=RKCK54, dt=0.01)
 
 # SIMULATION ============================================================================
 
-T_sim = 6.0  # Total simulation time [s]
+T_sim = 7.0  # Total simulation time [s]
 
 
 # Run Example ===========================================================================
