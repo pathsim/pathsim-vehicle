@@ -10,12 +10,12 @@
 
 import numpy as np
 
-from pathsim.blocks.dynsys import DynamicalSystem
+from pathsim.blocks.ode import ODE
 
 
 # BLOCK Definitions ================================================================================
 
-class LinearSingleTrack(DynamicalSystem):
+class LinearSingleTrack(ODE):
     """Linearized single-track (bicycle) vehicle model with external
     longitudinal velocity input.
 
@@ -23,9 +23,9 @@ class LinearSingleTrack(DynamicalSystem):
     within the linear tire range (roughly :math:`a_y < 4\\,\\mathrm{m/s^2}`
     on dry asphalt for typical passenger cars) at moderate, slowly varying
     forward speed. Near standstill the slip-angle kinematics are singular
-    in :math:`v_x`; the implementation clamps the denominator at
-    :math:`|v_x| = 0.5\\,\\mathrm{m/s}`, below which the model is not
-    physically meaningful.
+    in :math:`v_x`; the implementation replaces it with the smooth norm
+    :math:`\\sqrt{v_x^2 + v_{x,\\mathrm{eps}}^2}`, so the model is not
+    physically meaningful below :math:`v_{x,\\mathrm{eps}}`.
 
     The equations of the ``LinearSingleTrack`` block are derived from the
     nonlinear, force-driven single-track model with the equations of motion
@@ -167,7 +167,7 @@ class LinearSingleTrack(DynamicalSystem):
     output_port_labels = {"v_y": 0, "r": 1, "psi": 2, "X": 3, "Y": 4}
 
     def __init__(self, m=1500.0, I_z=3000.0, l_f=1.2, l_r=1.4,
-                 C_Falpha_f=80000.0, C_Falpha_r=80000.0, initial_value=None):
+                 C_Falpha_f=80000.0, C_Falpha_r=80000.0, v_x_eps = 0.5, initial_value=None):
 
         # vehicle parameters
         self.m = m
@@ -176,15 +176,16 @@ class LinearSingleTrack(DynamicalSystem):
         self.l_r = l_r
         self.C_Falpha_f = C_Falpha_f
         self.C_Falpha_r = C_Falpha_r
+        self.v_x_eps = v_x_eps
 
         
         if initial_value is None:
             initial_value = np.zeros(5)
 
         super().__init__(
-            func_dyn=self._func_dyn,
-            func_alg=lambda x, u, t: x,
+            func=self._func_dyn,
             initial_value=np.asarray(initial_value, dtype=float),
+            jac=self._jac_dyn,
             )
 
 
@@ -209,11 +210,7 @@ class LinearSingleTrack(DynamicalSystem):
         delta, v_x = u[0], u[1]
 
         # sign-preserving singularity guard for the slip-angle denominator
-        eps = 0.5
-        if v_x >= 0.0:
-            v_x_safe = v_x if v_x >  eps else  eps
-        else:
-            v_x_safe = v_x if v_x < -eps else -eps
+        v_x_safe = np.sqrt(v_x**2 + self.v_x_eps**2)
 
         # linearised slip angles (small-angle: tan(alpha) ~ alpha)
         alpha_f = delta - (v_y + self.l_f * r) / v_x_safe
@@ -223,7 +220,7 @@ class LinearSingleTrack(DynamicalSystem):
         F_y_f = self.C_Falpha_f * alpha_f
         F_y_r = self.C_Falpha_r * alpha_r
 
-        # equations of motion (quasi-steady v_x: no v_x_dot equation)
+        # equations of motion
         dv_y = (F_y_f + F_y_r) / self.m - v_x * r
         dr   = (self.l_f * F_y_f - self.l_r * F_y_r) / self.I_z
         dpsi = r
@@ -233,6 +230,21 @@ class LinearSingleTrack(DynamicalSystem):
         return np.array([dv_y, dr, dpsi, dX, dY])
 
 
-    def __len__(self):
+    def _jac_dyn(self, x, u, t):
+        """Analytic state Jacobian df/dx of the linear single-track equations.
+        """
+        v_y, r, psi = x[0], x[1], x[2]
+        v_x = u[1]
+        v_x_safe = np.sqrt(v_x**2 + self.v_x_eps**2)
 
-        return 0
+        J = np.zeros((5, 5))
+        J[0, 0] = (-self.C_Falpha_f - self.C_Falpha_r)/(self.m*v_x_safe)
+        J[0, 1] = (-self.C_Falpha_f*self.l_f + self.C_Falpha_r*self.l_r - self.m*v_x*v_x_safe)/(self.m*v_x_safe)
+        J[1, 0] = (-self.C_Falpha_f*self.l_f + self.C_Falpha_r*self.l_r)/(self.I_z*v_x_safe)
+        J[1, 1] = (-self.C_Falpha_f*self.l_f**2 - self.C_Falpha_r*self.l_r**2)/(self.I_z*v_x_safe)
+        J[2, 1] = 1
+        J[3, 0] = -np.sin(psi)
+        J[3, 2] = -v_x*np.sin(psi) - v_y*np.cos(psi)
+        J[4, 0] = np.cos(psi)
+        J[4, 2] = v_x*np.cos(psi) - v_y*np.sin(psi)
+        return J
