@@ -22,6 +22,13 @@
 
 PathSim-Vehicle extends the [PathSim](https://github.com/pathsim/pathsim) simulation framework with blocks for vehicle dynamics. All blocks follow the standard PathSim block interface and can be connected into simulation diagrams.
 
+## Features
+
+- **Kinematic bicycle model** — 4-state model (position, heading, speed) suitable for low-to-moderate speeds and path planning
+- **Dynamic bicycle model** — 6-state model with linear tire forces for higher-fidelity lateral dynamics
+- **Vehicle parameter sets** — including Hyundai Azera test vehicle from Kong et al. (IEEE IV 2015)
+- **Input constraints** — steering angle/rate and acceleration/jerk bounds
+
 ## Install
 
 ```bash

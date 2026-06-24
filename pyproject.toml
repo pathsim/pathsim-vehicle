@@ -26,7 +26,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "pathsim",
+    "pathsim>=0.20",
     "numpy>=1.15,<2",
     "scipy>=1.2",
     # If a dependency ships native code that can't be installed in Pyodide,
